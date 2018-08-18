@@ -88,11 +88,13 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
     @Override
     public void run()
     {
-      LOG.debug("starting task for queue: {}", this.queue_configuration.queueAddress());
+      final String queue_address = this.queue_configuration.queueAddress();
+      LOG.debug("starting task for queue: {}", queue_address);
 
       while (!this.client.done.get()) {
         try {
           if (this.connection == null) {
+            LOG.debug("(re)opening connection to broker for queue: {}", queue_address);
             this.connection = RBrokerConnection.create(this.queue_configuration);
           }
 
