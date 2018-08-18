@@ -66,19 +66,16 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
   {
     private final RClient client;
     private final RQueueConfiguration queue_configuration;
-    private final RBrokerConnection connection;
+    private RBrokerConnection connection;
 
     RClientBrokerTask(
       final RClient in_client,
-      final RQueueConfiguration in_queue_configuration,
-      final RBrokerConnection in_connection)
+      final RQueueConfiguration in_queue_configuration)
     {
       this.client =
         Objects.requireNonNull(in_client, "client");
       this.queue_configuration =
         Objects.requireNonNull(in_queue_configuration, "queue_configuration");
-      this.connection =
-        Objects.requireNonNull(in_connection, "connection");
     }
 
     @Override
@@ -95,9 +92,22 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
 
       while (!this.client.done.get()) {
         try {
+          if (this.connection == null) {
+            this.connection = RBrokerConnection.create(this.queue_configuration);
+          }
+
           this.connection.receive(this::onMessageReceived);
-        } catch (final IOException e) {
+        } catch (final Exception e) {
           LOG.error("i/o error: ", e);
+          try {
+            if (this.connection != null) {
+              this.connection.close();
+            }
+          } catch (final IOException ex) {
+            LOG.error("error closing connection: ", ex);
+          } finally {
+            this.connection = null;
+          }
         }
       }
     }
@@ -197,10 +207,7 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
 
     for (final RQueueConfiguration queue_configuration : this.configuration.queues()) {
       final RClientBrokerTask task =
-        new RClientBrokerTask(
-          this,
-          queue_configuration,
-          RBrokerConnection.create(queue_configuration));
+        new RClientBrokerTask(this, queue_configuration);
       this.tasks.add(task);
       this.executor.execute(task);
     }
