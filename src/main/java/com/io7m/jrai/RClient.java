@@ -109,7 +109,7 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
 
       while (!this.client.done.get()) {
         try {
-          if (this.connection == null) {
+          if (this.connection == null || !this.connection.isOpen()) {
             LOG.debug("(re)opening connection to broker for queue: {}", queue_address);
             this.connection = RBrokerConnection.create(this.queue_configuration);
           }
@@ -126,6 +126,13 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
           } finally {
             this.connection = null;
           }
+
+          LOG.debug("pausing for one second before retrying");
+          try {
+            Thread.sleep(1_000L);
+          } catch (final InterruptedException ex) {
+            Thread.currentThread().interrupt();
+          }
         }
       }
     }
@@ -136,7 +143,6 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
       LOG.debug("received: {}: {}", message.queue(), message.message());
 
       final OutputIRC sender = this.client.bot.send();
-
       sender.message(
         this.client.configuration.ircChannel(),
         message.queue() + ": " + message.message());
@@ -173,7 +179,9 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
     irc_configuration_builder.setSocketFactory(tls_factory);
     irc_configuration_builder.setLogin(
       this.configuration.ircUserName());
-
+    irc_configuration_builder.setSocketTimeout(5_000);
+    irc_configuration_builder.setAutoReconnectAttempts(Integer.MAX_VALUE);
+    irc_configuration_builder.setAutoReconnectDelay(1_000);
     irc_configuration_builder.addListener(this);
 
     final Configuration irc_configuration = irc_configuration_builder.buildConfiguration();

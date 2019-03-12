@@ -24,6 +24,9 @@ import org.apache.activemq.artemis.api.core.client.ClientMessage;
 import org.apache.activemq.artemis.api.core.client.ClientSession;
 import org.apache.activemq.artemis.api.core.client.ClientSessionFactory;
 import org.apache.activemq.artemis.api.core.client.ServerLocator;
+import org.apache.activemq.artemis.api.core.client.SessionFailureListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -39,6 +42,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class RBrokerConnection implements Closeable
 {
+  private static final Logger LOG = LoggerFactory.getLogger(RBrokerConnection.class);
+
   private final RQueueConfiguration configuration;
   private final ServerLocator locator;
   private final ClientSessionFactory clients;
@@ -107,7 +112,65 @@ public final class RBrokerConnection implements Closeable
       session.createConsumer(configuration.queueAddress());
 
     session.start();
-    return new RBrokerConnection(configuration, locator, clients, session, consumer);
+
+    final RBrokerConnection connection =
+      new RBrokerConnection(configuration, locator, clients, session, consumer);
+
+    session.addFailureListener(new SessionFailureListener()
+    {
+      @Override
+      public void beforeReconnect(
+        final ActiveMQException exception)
+      {
+        try {
+          connection.close();
+        } catch (final IOException e) {
+          LOG.debug("error closing connection: ", e);
+        }
+      }
+
+      @Override
+      public void connectionFailed(
+        final ActiveMQException exception,
+        final boolean failedOver)
+      {
+        try {
+          connection.close();
+        } catch (final IOException e) {
+          LOG.debug("error closing connection: ", e);
+        }
+      }
+
+      @Override
+      public void connectionFailed(
+        final ActiveMQException exception,
+        final boolean failedOver,
+        final String scaleDownTargetNodeID)
+      {
+        try {
+          connection.close();
+        } catch (final IOException e) {
+          LOG.debug("error closing connection: ", e);
+        }
+      }
+    });
+
+    return connection;
+  }
+
+  /**
+   * @return {@code true} if the connection is still open
+   */
+
+  public boolean isOpen()
+  {
+    if (this.session.isClosed()) {
+      return false;
+    }
+    if (this.consumer.isClosed()) {
+      return false;
+    }
+    return !this.closed.get();
   }
 
   public void receive(
@@ -147,21 +210,38 @@ public final class RBrokerConnection implements Closeable
       IOException exception = null;
 
       try {
-        this.session.close();
-      } catch (final ActiveMQException e) {
+        this.consumer.close();
+      } catch (final Exception e) {
         exception = new IOException("Failed to close resources");
         exception.addSuppressed(e);
       }
+
       try {
-        this.consumer.close();
-      } catch (final ActiveMQException e) {
+        this.session.close();
+      } catch (final Exception e) {
         if (exception == null) {
           exception = new IOException("Failed to close resources");
         }
         exception.addSuppressed(e);
       }
-      this.clients.close();
-      this.locator.close();
+
+      try {
+        this.clients.close();
+      } catch (final Exception e) {
+        if (exception == null) {
+          exception = new IOException("Failed to close resources");
+        }
+        exception.addSuppressed(e);
+      }
+
+      try {
+        this.locator.close();
+      } catch (final Exception e) {
+        if (exception == null) {
+          exception = new IOException("Failed to close resources");
+        }
+        exception.addSuppressed(e);
+      }
 
       if (exception != null) {
         throw exception;
