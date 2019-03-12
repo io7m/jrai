@@ -1,3 +1,19 @@
+/*
+ * Copyright © 2018 Mark Raynsford <code@io7m.com> http://io7m.com
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
+ * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 package com.io7m.jrai;
 
 import org.pircbotx.Configuration;
@@ -66,19 +82,16 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
   {
     private final RClient client;
     private final RQueueConfiguration queue_configuration;
-    private final RBrokerConnection connection;
+    private RBrokerConnection connection;
 
     RClientBrokerTask(
       final RClient in_client,
-      final RQueueConfiguration in_queue_configuration,
-      final RBrokerConnection in_connection)
+      final RQueueConfiguration in_queue_configuration)
     {
       this.client =
         Objects.requireNonNull(in_client, "client");
       this.queue_configuration =
         Objects.requireNonNull(in_queue_configuration, "queue_configuration");
-      this.connection =
-        Objects.requireNonNull(in_connection, "connection");
     }
 
     @Override
@@ -91,13 +104,35 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
     @Override
     public void run()
     {
-      LOG.debug("starting task for queue: {}", this.queue_configuration.queueAddress());
+      final String queue_address = this.queue_configuration.queueAddress();
+      LOG.debug("starting task for queue: {}", queue_address);
 
       while (!this.client.done.get()) {
         try {
+          if (this.connection == null || !this.connection.isOpen()) {
+            LOG.debug("(re)opening connection to broker for queue: {}", queue_address);
+            this.connection = RBrokerConnection.create(this.queue_configuration);
+          }
+
           this.connection.receive(this::onMessageReceived);
-        } catch (final IOException e) {
+        } catch (final Exception e) {
           LOG.error("i/o error: ", e);
+          try {
+            if (this.connection != null) {
+              this.connection.close();
+            }
+          } catch (final IOException ex) {
+            LOG.error("error closing connection: ", ex);
+          } finally {
+            this.connection = null;
+          }
+
+          LOG.debug("pausing for one second before retrying");
+          try {
+            Thread.sleep(1_000L);
+          } catch (final InterruptedException ex) {
+            Thread.currentThread().interrupt();
+          }
         }
       }
     }
@@ -108,7 +143,6 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
       LOG.debug("received: {}: {}", message.queue(), message.message());
 
       final OutputIRC sender = this.client.bot.send();
-
       sender.message(
         this.client.configuration.ircChannel(),
         message.queue() + ": " + message.message());
@@ -145,7 +179,9 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
     irc_configuration_builder.setSocketFactory(tls_factory);
     irc_configuration_builder.setLogin(
       this.configuration.ircUserName());
-
+    irc_configuration_builder.setSocketTimeout(5_000);
+    irc_configuration_builder.setAutoReconnectAttempts(Integer.MAX_VALUE);
+    irc_configuration_builder.setAutoReconnectDelay(1_000);
     irc_configuration_builder.addListener(this);
 
     final Configuration irc_configuration = irc_configuration_builder.buildConfiguration();
@@ -197,10 +233,7 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
 
     for (final RQueueConfiguration queue_configuration : this.configuration.queues()) {
       final RClientBrokerTask task =
-        new RClientBrokerTask(
-          this,
-          queue_configuration,
-          RBrokerConnection.create(queue_configuration));
+        new RClientBrokerTask(this, queue_configuration);
       this.tasks.add(task);
       this.executor.execute(task);
     }

@@ -9,12 +9,12 @@
   <parent>
     <groupId>com.io7m.primogenitor</groupId>
     <artifactId>com.io7m.primogenitor</artifactId>
-    <version>3.0.0-beta0008</version>
+    <version>3.0.0-beta0019</version>
   </parent>
 
   <groupId>com.io7m.jrai</groupId>
   <artifactId>com.io7m.jrai</artifactId>
-  <version>0.0.1</version>
+  <version>0.0.2</version>
 
   <packaging>jar</packaging>
   <name>com.io7m.jrai</name>
@@ -167,6 +167,11 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>io.github.zlika</groupId>
+        <artifactId>reproducible-build-maven-plugin</artifactId>
       </plugin>
     </plugins>
   </build>
