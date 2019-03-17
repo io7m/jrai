@@ -120,7 +120,7 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
 
             sender.message(
               this.client.configuration.ircChannel(),
-              "established connection to message broker");
+              "info: established connection to message broker");
             sent_error = false;
           }
 
@@ -130,7 +130,7 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
             sender.message(
               this.client.configuration.ircChannel(),
               new StringBuilder(64)
-                .append("lost connection to message broker: ")
+                .append("error: lost connection to message broker: ")
                 .append(e.getClass().getSimpleName())
                 .append(": ")
                 .append(e.getMessage())
