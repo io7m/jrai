@@ -19,6 +19,8 @@ package com.io7m.jrai;
 import com.io7m.immutables.styles.ImmutablesStyleType;
 import org.immutables.value.Value;
 
+import java.time.Instant;
+
 /**
  * The type of messages.
  */
@@ -40,4 +42,11 @@ public interface RMessageType
 
   @Value.Parameter
   String message();
+
+  /**
+   * @return The message timestamp
+   */
+
+  @Value.Parameter
+  Instant timestamp();
 }

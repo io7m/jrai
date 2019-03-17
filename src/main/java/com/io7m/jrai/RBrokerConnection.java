@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -187,10 +188,12 @@ public final class RBrokerConnection implements Closeable
         final ActiveMQBuffer buffer = message.getBodyBuffer();
         buffer.readBytes(bytes);
         final String text = new String(bytes, UTF_8);
+        final Instant time = Instant.ofEpochSecond(message.getTimestamp());
 
         receiver.accept(
           RMessage.builder()
             .setQueue(this.configuration.queueAddress())
+            .setTimestamp(time)
             .setMessage(text)
             .build());
 
