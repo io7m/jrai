@@ -37,6 +37,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static java.time.format.DateTimeFormatter.ISO_INSTANT;
+
 /**
  * A relay client.
  */
@@ -107,15 +109,35 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
       final String queue_address = this.queue_configuration.queueAddress();
       LOG.debug("starting task for queue: {}", queue_address);
 
+      final OutputIRC sender = this.client.bot.send();
+      boolean sent_error = false;
+
       while (!this.client.done.get()) {
         try {
           if (this.connection == null || !this.connection.isOpen()) {
             LOG.debug("(re)opening connection to broker for queue: {}", queue_address);
             this.connection = RBrokerConnection.create(this.queue_configuration);
+
+            sender.message(
+              this.client.configuration.ircChannel(),
+              "established connection to message broker");
+            sent_error = false;
           }
 
           this.connection.receive(this::onMessageReceived);
         } catch (final Exception e) {
+          if (sent_error == false) {
+            sender.message(
+              this.client.configuration.ircChannel(),
+              new StringBuilder(64)
+                .append("lost connection to message broker: ")
+                .append(e.getClass().getSimpleName())
+                .append(": ")
+                .append(e.getMessage())
+                .toString());
+            sent_error = true;
+          }
+
           LOG.error("i/o error: ", e);
           try {
             if (this.connection != null) {
@@ -142,10 +164,17 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
     {
       LOG.debug("received: {}: {}", message.queue(), message.message());
 
+      final String text =
+        new StringBuilder(64)
+          .append(message.queue())
+          .append(": ")
+          .append(ISO_INSTANT.format(message.timestamp()))
+          .append(": ")
+          .append(message.message())
+          .toString();
+
       final OutputIRC sender = this.client.bot.send();
-      sender.message(
-        this.client.configuration.ircChannel(),
-        message.queue() + ": " + message.message());
+      sender.message(this.client.configuration.ircChannel(), text);
     }
   }
 
