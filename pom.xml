@@ -14,7 +14,7 @@
 
   <groupId>com.io7m.jrai</groupId>
   <artifactId>com.io7m.jrai</artifactId>
-  <version>0.0.4</version>
+  <version>0.0.5</version>
 
   <packaging>jar</packaging>
   <name>com.io7m.jrai</name>
