@@ -188,7 +188,7 @@ public final class RBrokerConnection implements Closeable
         final ActiveMQBuffer buffer = message.getBodyBuffer();
         buffer.readBytes(bytes);
         final String text = new String(bytes, UTF_8);
-        final Instant time = Instant.ofEpochSecond(message.getTimestamp());
+        final Instant time = Instant.ofEpochMilli(message.getTimestamp());
 
         receiver.accept(
           RMessage.builder()
