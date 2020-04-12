@@ -110,7 +110,7 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
       LOG.debug("starting task for queue: {}", queue_address);
 
       final OutputIRC sender = this.client.bot.send();
-      boolean sent_error = false;
+      boolean sentError = false;
 
       while (!this.client.done.get()) {
         try {
@@ -121,12 +121,12 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
             sender.message(
               this.client.configuration.ircChannel(),
               "info: established connection to message broker");
-            sent_error = false;
+            sentError = false;
           }
 
           this.connection.receive(this::onMessageReceived);
         } catch (final Exception e) {
-          if (sent_error == false) {
+          if (!sentError) {
             sender.message(
               this.client.configuration.ircChannel(),
               new StringBuilder(64)
@@ -135,7 +135,7 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
                 .append(": ")
                 .append(e.getMessage())
                 .toString());
-            sent_error = true;
+            sentError = true;
           }
 
           LOG.error("i/o error: ", e);

@@ -117,45 +117,7 @@ public final class RBrokerConnection implements Closeable
     final RBrokerConnection connection =
       new RBrokerConnection(configuration, locator, clients, session, consumer);
 
-    session.addFailureListener(new SessionFailureListener()
-    {
-      @Override
-      public void beforeReconnect(
-        final ActiveMQException exception)
-      {
-        try {
-          connection.close();
-        } catch (final IOException e) {
-          LOG.debug("error closing connection: ", e);
-        }
-      }
-
-      @Override
-      public void connectionFailed(
-        final ActiveMQException exception,
-        final boolean failedOver)
-      {
-        try {
-          connection.close();
-        } catch (final IOException e) {
-          LOG.debug("error closing connection: ", e);
-        }
-      }
-
-      @Override
-      public void connectionFailed(
-        final ActiveMQException exception,
-        final boolean failedOver,
-        final String scaleDownTargetNodeID)
-      {
-        try {
-          connection.close();
-        } catch (final IOException e) {
-          LOG.debug("error closing connection: ", e);
-        }
-      }
-    });
-
+    session.addFailureListener(new RSessionFailureListener(connection));
     return connection;
   }
 
@@ -187,7 +149,7 @@ public final class RBrokerConnection implements Closeable
         final byte[] bytes = new byte[size];
         final ActiveMQBuffer buffer = message.getBodyBuffer();
         buffer.readBytes(bytes);
-        final String text = new String(bytes, UTF_8);
+        final String text = stringOfBytes(bytes);
         final Instant time = Instant.ofEpochMilli(message.getTimestamp());
 
         receiver.accept(
@@ -205,49 +167,130 @@ public final class RBrokerConnection implements Closeable
     }
   }
 
+  private static String stringOfBytes(
+    final byte[] bytes)
+  {
+    // CHECKSTYLE:OFF
+    return new String(bytes, UTF_8);
+    // CHECKSTYLE:ON
+  }
+
   @Override
   public void close()
     throws IOException
   {
     if (this.closed.compareAndSet(false, true)) {
       IOException exception = null;
-
-      try {
-        this.consumer.close();
-      } catch (final Exception e) {
-        exception = new IOException("Failed to close resources");
-        exception.addSuppressed(e);
-      }
-
-      try {
-        this.session.close();
-      } catch (final Exception e) {
-        if (exception == null) {
-          exception = new IOException("Failed to close resources");
-        }
-        exception.addSuppressed(e);
-      }
-
-      try {
-        this.clients.close();
-      } catch (final Exception e) {
-        if (exception == null) {
-          exception = new IOException("Failed to close resources");
-        }
-        exception.addSuppressed(e);
-      }
-
-      try {
-        this.locator.close();
-      } catch (final Exception e) {
-        if (exception == null) {
-          exception = new IOException("Failed to close resources");
-        }
-        exception.addSuppressed(e);
-      }
+      exception = this.closeConsumer(exception);
+      exception = this.closeSession(exception);
+      exception = this.closeClients(exception);
+      exception = this.closeLocator(exception);
 
       if (exception != null) {
         throw exception;
+      }
+    }
+  }
+
+  private IOException closeLocator(final IOException exception)
+  {
+    IOException ioException = exception;
+    try {
+      this.locator.close();
+    } catch (final Exception e) {
+      if (ioException == null) {
+        ioException = new IOException("Failed to close resources");
+      }
+      ioException.addSuppressed(e);
+    }
+    return ioException;
+  }
+
+  private IOException closeClients(final IOException exception)
+  {
+    IOException ioException = exception;
+    try {
+      this.clients.close();
+    } catch (final Exception e) {
+      if (ioException == null) {
+        ioException = new IOException("Failed to close resources");
+      }
+      ioException.addSuppressed(e);
+    }
+    return ioException;
+  }
+
+  private IOException closeSession(final IOException exception)
+  {
+    IOException ioException = exception;
+    try {
+      this.session.close();
+    } catch (final Exception e) {
+      if (ioException == null) {
+        ioException = new IOException("Failed to close resources");
+      }
+      ioException.addSuppressed(e);
+    }
+    return ioException;
+  }
+
+  private IOException closeConsumer(final IOException exception)
+  {
+    IOException ioException = exception;
+    try {
+      this.consumer.close();
+    } catch (final Exception e) {
+      ioException = new IOException("Failed to close resources");
+      ioException.addSuppressed(e);
+    }
+    return ioException;
+  }
+
+  private static final class RSessionFailureListener
+    implements SessionFailureListener
+  {
+    private final RBrokerConnection connection;
+
+    RSessionFailureListener(
+      final RBrokerConnection inConnection)
+    {
+      this.connection =
+        Objects.requireNonNull(inConnection, "connection");
+    }
+
+    @Override
+    public void beforeReconnect(
+      final ActiveMQException exception)
+    {
+      try {
+        this.connection.close();
+      } catch (final IOException e) {
+        LOG.debug("error closing connection: ", e);
+      }
+    }
+
+    @Override
+    public void connectionFailed(
+      final ActiveMQException exception,
+      final boolean failedOver)
+    {
+      try {
+        this.connection.close();
+      } catch (final IOException e) {
+        LOG.debug("error closing connection: ", e);
+      }
+    }
+
+    @Override
+    public void connectionFailed(
+      final ActiveMQException exception,
+      final boolean failedOver,
+      final String scaleDownTargetNodeID)
+    {
+      try {
+        this.connection.close();
+      } catch (final IOException e) {
+        LOG.debug("error closing connection: ", e);
       }
     }
   }
