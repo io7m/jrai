@@ -23,7 +23,7 @@
 
   <properties>
     <com.io7m.org.immutables.value.version>2.6.1</com.io7m.org.immutables.value.version>
-    <io7m.api.previousVersion>0.0.1</io7m.api.previousVersion>
+    <io7m.api.previousVersion>0.0.6</io7m.api.previousVersion>
   </properties>
 
   <licenses>
