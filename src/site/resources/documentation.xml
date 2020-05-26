@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<div xmlns="http://www.w3.org/1999/xhtml">
+  <h3>User documentation</h3>
+
+  <p>
+    The <tt>jrai</tt> program takes a configuration file in
+    <a href="https://docs.oracle.com/javase/7/docs/api/java/util/Properties.html">Properties</a>
+    format. An example configuration file is as follows:
+  </p>
+
+  <pre><![CDATA[
+com.io7m.jrai.queues = exampleQueue0 exampleQueue1
+
+com.io7m.jrai.irc_server_host = irc.example.com
+com.io7m.jrai.irc_server_port = 6669
+com.io7m.jrai.irc_nick        = jrai
+com.io7m.jrai.irc_user        = jrai
+com.io7m.jrai.irc_channel     = #status
+
+com.io7m.jrai.queues.exampleQueue0.broker_address  = messaging.example.com
+com.io7m.jrai.queues.exampleQueue0.broker_port     = 61000
+com.io7m.jrai.queues.exampleQueue0.broker_user     = alice
+com.io7m.jrai.queues.exampleQueue0.broker_password = bm90IGEgcGFzc3dvcmQK
+com.io7m.jrai.queues.exampleQueue0.queue_address   = queue0
+
+com.io7m.jrai.queues.exampleQueue1.broker_address  = messaging.example.com
+com.io7m.jrai.queues.exampleQueue1.broker_port     = 61000
+com.io7m.jrai.queues.exampleQueue1.broker_user     = alice
+com.io7m.jrai.queues.exampleQueue1.broker_password = bm90IGEgcGFzc3dvcmQK
+com.io7m.jrai.queues.exampleQueue1.queue_address   = queue1
+]]>
+  </pre>
+
+  <p>
+    The <tt>com.io7m.jrai.queues</tt> property provides a space-separated list of queue definitions. The elements of the
+    list are used to look up configuration properties for each queue by prepending the given names with <tt>
+    com.io7m.jrai.queues.</tt>. In the above example, two queue definitions <tt>exampleQueue0</tt> and
+    <tt>exampleQueue1</tt>
+    are defined, and the queue configuration properties are given in
+    <tt>com.io7m.jrai.queues.exampleQueue0.*</tt>
+    and <tt>com.io7m.jrai.queues.exampleQueue1.*</tt>.
+  </p>
+
+  <p>
+    The above configuration will cause the bot to connect to <tt>irc.example.com:6669</tt>, using username <tt>jrai</tt>
+    and nickname <tt>jrai</tt>. The bot will join the <tt>#status</tt> channel. The bot will then connect to
+    <tt>messaging.example.com:61000</tt> and subscribe to queues <tt>queue0</tt> and <tt>queue1</tt>. The bot will
+    then relay any text message sent to those queues to the <tt>#status</tt> channel.
+  </p>
+
+  <p>
+    The bot is executed with: <tt>$ java -jar jrai.jar jrai.conf</tt>, where <tt>jrai.jar</tt> is the <tt>jrai</tt>
+    jar file, and <tt>jrai.conf</tt> is the configuration file. The bot <i>will not</i> fork into the background;
+    it is designed to run under a process supervision system.
+  </p>
+
+  <h4>IRC Server Properties</h4>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <tt>com.io7m.jrai.irc_server_host</tt>
+        </td>
+        <td>The IRC server hostname</td>
+      </tr>
+      <tr>
+        <td>
+          <tt>com.io7m.jrai.irc_server_port</tt>
+        </td>
+        <td>The IRC server port</td>
+      </tr>
+      <tr>
+        <td>
+          <tt>com.io7m.jrai.irc_nick</tt>
+        </td>
+        <td>The nickname the bot will use on the IRC server.</td>
+      </tr>
+      <tr>
+        <td>
+          <tt>com.io7m.jrai.irc_user</tt>
+        </td>
+        <td>The username the bot will use on the IRC server.</td>
+      </tr>
+      <tr>
+        <td>
+          <tt>com.io7m.jrai.irc_channel</tt>
+        </td>
+        <td>The channel to which the bot will join on the IRC server.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>Message Queue Properties</h4>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <tt>com.io7m.jrai.*.broker_address</tt>
+        </td>
+        <td>The address of the message broker</td>
+      </tr>
+      <tr>
+        <td>
+          <tt>com.io7m.jrai.*.broker_port</tt>
+        </td>
+        <td>The message broker port</td>
+      </tr>
+      <tr>
+        <td>
+          <tt>com.io7m.jrai.*.broker_user</tt>
+        </td>
+        <td>The username that will be used when connecting to the message broker.</td>
+      </tr>
+      <tr>
+        <td>
+          <tt>com.io7m.jrai.*.broker_password</tt>
+        </td>
+        <td>The password that will be used when connecting to the message broker.</td>
+      </tr>
+      <tr>
+        <td>
+          <tt>com.io7m.jrai.*.queue_address</tt>
+        </td>
+        <td>The name of the queue to which the bot will subscribe on the message broker.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>Example Invocation</h4>
+
+  <p>
+    The following invocation runs <tt>jrai</tt> as an unprivileged user, with a custom trust store,
+    and settings optimized for a tiny (16mb) heap:
+  </p>
+
+  <pre><![CDATA[
+exec /usr/bin/chpst \
+  -u jrai:agents \
+  /usr/bin/java \
+  -Xmx16m \
+  -Xms16m \
+  -XX:MetaspaceSize=32m \
+  -XX:MaxMetaspaceSize=32m \
+  -XX:-UseCompressedClassPointers \
+  -XX:TieredStopAtLevel=2 \
+  -XX:+UseSerialGC \
+  -XX:+PrintGC \
+  -Djavax.net.ssl.trustStore=/local/etc/jrai/trust.jks \
+  -Djavax.net.ssl.trustStorePassword=c3RpbGwgbm90IGEgcGFzc3dvcmQK \
+  -jar /local/etc/jrai/com.io7m.jrai-0.0.5-main.jar \
+  /local/etc/jrai/jrai.properties
+]]>
+  </pre>
+
+</div>

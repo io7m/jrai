@@ -22,6 +22,7 @@
   <url>https://github.com/io7m/jrai</url>
 
   <properties>
+    <com.codacy.id>5e8b3ea1007d46408b44bb7ef3e6cc0b</com.codacy.id>
     <com.io7m.org.immutables.value.version>2.6.1</com.io7m.org.immutables.value.version>
     <io7m.api.previousVersion>0.0.6</io7m.api.previousVersion>
   </properties>
