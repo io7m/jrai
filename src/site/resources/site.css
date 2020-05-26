@@ -2,6 +2,15 @@ p.shields a {
   text-decoration: none;
 }
 
+table.aligned td:nth-child(1) {
+  width: 12em;
+  padding-right: 1em;
+}
+
+table.aligned th {
+  text-align: left;
+}
+
 #header {
   font-family: monospace;
 }

@@ -57,7 +57,7 @@ com.io7m.jrai.queues.exampleQueue1.queue_address   = queue1
 
   <h4>IRC Server Properties</h4>
 
-  <table>
+  <table class="aligned">
     <thead>
       <tr>
         <th>Property</th>
@@ -100,7 +100,7 @@ com.io7m.jrai.queues.exampleQueue1.queue_address   = queue1
 
   <h4>Message Queue Properties</h4>
 
-  <table>
+  <table class="aligned">
     <thead>
       <tr>
         <th>Property</th>
