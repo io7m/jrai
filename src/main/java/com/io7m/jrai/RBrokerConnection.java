@@ -136,6 +136,14 @@ public final class RBrokerConnection implements Closeable
     return !this.closed.get();
   }
 
+  /**
+   * Recieve a message.
+   *
+   * @param receiver The message receiver
+   *
+   * @throws IOException On I/O errors
+   */
+
   public void receive(
     final Consumer<RMessage> receiver)
     throws IOException
