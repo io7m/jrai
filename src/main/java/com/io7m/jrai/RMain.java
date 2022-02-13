@@ -55,15 +55,15 @@ public final class RMain
       System.exit(1);
     }
 
-    final Path path = Paths.get(args[0]);
+    final var path = Paths.get(args[0]);
     final RConfiguration configuration;
-    try (InputStream stream = Files.newInputStream(path)) {
-      final Properties properties = new Properties();
+    try (var stream = Files.newInputStream(path)) {
+      final var properties = new Properties();
       properties.load(stream);
       configuration = RConfigurations.ofProperties(properties);
     }
 
-    try (RClient client = RClient.create(configuration)) {
+    try (var client = RClient.create(configuration)) {
       client.start();
 
       while (true) {

@@ -51,9 +51,9 @@ public final class RConfigurations
     Objects.requireNonNull(properties, "properties");
 
     try {
-      final RConfiguration.Builder builder = RConfiguration.builder();
-
-      final String queues_value =
+      final var builder =
+        RConfiguration.builder();
+      final var queues_value =
         properties.getProperty("com.io7m.jrai.queues");
 
       builder.setIrcHost(properties.getProperty("com.io7m.jrai.irc_server_host"));
@@ -62,7 +62,7 @@ public final class RConfigurations
       builder.setIrcUserName(properties.getProperty("com.io7m.jrai.irc_user"));
       builder.setIrcChannel(properties.getProperty("com.io7m.jrai.irc_channel"));
 
-      for (final String queue : WHITESPACE.split(queues_value)) {
+      for (final var queue : WHITESPACE.split(queues_value)) {
         builder.addQueues(parseQueue(properties, queue));
       }
 
@@ -76,7 +76,7 @@ public final class RConfigurations
     final Properties properties,
     final String directory)
   {
-    final RQueueConfiguration.Builder builder =
+    final var builder =
       RQueueConfiguration.builder();
 
     builder.setQueueAddress(properties.getProperty(

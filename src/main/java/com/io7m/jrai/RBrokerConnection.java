@@ -86,7 +86,7 @@ public final class RBrokerConnection implements Closeable
     final RQueueConfiguration configuration)
     throws Exception
   {
-    final String address =
+    final var address =
       new StringBuilder(64)
         .append("tcp://")
         .append(configuration.brokerAddress())
@@ -95,11 +95,11 @@ public final class RBrokerConnection implements Closeable
         .append("?sslEnabled=true")
         .toString();
 
-    final ServerLocator locator =
+    final var locator =
       ActiveMQClient.createServerLocator(address);
-    final ClientSessionFactory clients =
+    final var clients =
       locator.createSessionFactory();
-    final ClientSession session =
+    final var session =
       clients.createSession(
         configuration.brokerUser(),
         configuration.brokerPassword(),
@@ -109,12 +109,12 @@ public final class RBrokerConnection implements Closeable
         false,
         1);
 
-    final ClientConsumer consumer =
+    final var consumer =
       session.createConsumer(configuration.queueAddress());
 
     session.start();
 
-    final RBrokerConnection connection =
+    final var connection =
       new RBrokerConnection(configuration, locator, clients, session, consumer);
 
     session.addFailureListener(new RSessionFailureListener(connection));
@@ -150,15 +150,15 @@ public final class RBrokerConnection implements Closeable
   {
     try {
       Objects.requireNonNull(receiver, "receiver");
-      final ClientMessage message = this.consumer.receive(500L);
+      final var message = this.consumer.receive(500L);
 
       if (message != null) {
-        final int size = message.getBodySize();
-        final byte[] bytes = new byte[size];
-        final ActiveMQBuffer buffer = message.getBodyBuffer();
+        final var size = message.getBodySize();
+        final var bytes = new byte[size];
+        final var buffer = message.getBodyBuffer();
         buffer.readBytes(bytes);
-        final String text = stringOfBytes(bytes);
-        final Instant time = Instant.ofEpochMilli(message.getTimestamp());
+        final var text = stringOfBytes(bytes);
+        final var time = Instant.ofEpochMilli(message.getTimestamp());
 
         receiver.accept(
           RMessage.builder()
@@ -202,7 +202,7 @@ public final class RBrokerConnection implements Closeable
 
   private IOException closeLocator(final IOException exception)
   {
-    IOException ioException = exception;
+    var ioException = exception;
     try {
       this.locator.close();
     } catch (final Exception e) {
@@ -216,7 +216,7 @@ public final class RBrokerConnection implements Closeable
 
   private IOException closeClients(final IOException exception)
   {
-    IOException ioException = exception;
+    var ioException = exception;
     try {
       this.clients.close();
     } catch (final Exception e) {
@@ -230,7 +230,7 @@ public final class RBrokerConnection implements Closeable
 
   private IOException closeSession(final IOException exception)
   {
-    IOException ioException = exception;
+    var ioException = exception;
     try {
       this.session.close();
     } catch (final Exception e) {
@@ -244,7 +244,7 @@ public final class RBrokerConnection implements Closeable
 
   private IOException closeConsumer(final IOException exception)
   {
-    IOException ioException = exception;
+    var ioException = exception;
     try {
       this.consumer.close();
     } catch (final Exception e) {
