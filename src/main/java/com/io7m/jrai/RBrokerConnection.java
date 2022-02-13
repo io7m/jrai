@@ -16,11 +16,9 @@
 
 package com.io7m.jrai;
 
-import org.apache.activemq.artemis.api.core.ActiveMQBuffer;
 import org.apache.activemq.artemis.api.core.ActiveMQException;
 import org.apache.activemq.artemis.api.core.client.ActiveMQClient;
 import org.apache.activemq.artemis.api.core.client.ClientConsumer;
-import org.apache.activemq.artemis.api.core.client.ClientMessage;
 import org.apache.activemq.artemis.api.core.client.ClientSession;
 import org.apache.activemq.artemis.api.core.client.ClientSessionFactory;
 import org.apache.activemq.artemis.api.core.client.ServerLocator;
@@ -121,6 +119,14 @@ public final class RBrokerConnection implements Closeable
     return connection;
   }
 
+  private static String stringOfBytes(
+    final byte[] bytes)
+  {
+    // CHECKSTYLE:OFF
+    return new String(bytes, UTF_8);
+    // CHECKSTYLE:ON
+  }
+
   /**
    * @return {@code true} if the connection is still open
    */
@@ -173,14 +179,6 @@ public final class RBrokerConnection implements Closeable
     } catch (final ActiveMQException e) {
       throw new IOException(e);
     }
-  }
-
-  private static String stringOfBytes(
-    final byte[] bytes)
-  {
-    // CHECKSTYLE:OFF
-    return new String(bytes, UTF_8);
-    // CHECKSTYLE:ON
   }
 
   @Override

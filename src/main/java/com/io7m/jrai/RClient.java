@@ -53,135 +53,12 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
   private final ExecutorService executor;
   private final AtomicBoolean done = new AtomicBoolean(false);
 
-  @Override
-  public void close()
-    throws Exception
-  {
-    if (this.done.compareAndSet(false, true)) {
-      Exception e = null;
-
-      for (final RClientBrokerTask task : this.tasks) {
-        try {
-          task.close();
-        } catch (final IOException ex) {
-          if (e == null) {
-            e = new Exception(ex);
-          } else {
-            e.addSuppressed(ex);
-          }
-        }
-      }
-
-      this.executor.shutdown();
-
-      if (e != null) {
-        throw e;
-      }
-    }
-  }
-
-  private static final class RClientBrokerTask implements Closeable, Runnable
-  {
-    private final RClient client;
-    private final RQueueConfiguration queue_configuration;
-    private RBrokerConnection connection;
-
-    RClientBrokerTask(
-      final RClient in_client,
-      final RQueueConfiguration in_queue_configuration)
-    {
-      this.client =
-        Objects.requireNonNull(in_client, "client");
-      this.queue_configuration =
-        Objects.requireNonNull(in_queue_configuration, "queue_configuration");
-    }
-
-    @Override
-    public void close()
-      throws IOException
-    {
-      this.connection.close();
-    }
-
-    @Override
-    public void run()
-    {
-      final String queue_address = this.queue_configuration.queueAddress();
-      LOG.debug("starting task for queue: {}", queue_address);
-
-      final OutputIRC sender = this.client.bot.send();
-      boolean sentError = false;
-
-      while (!this.client.done.get()) {
-        try {
-          if (this.connection == null || !this.connection.isOpen()) {
-            LOG.debug("(re)opening connection to broker for queue: {}", queue_address);
-            this.connection = RBrokerConnection.create(this.queue_configuration);
-
-            sender.message(
-              this.client.configuration.ircChannel(),
-              "info: established connection to message broker");
-            sentError = false;
-          }
-
-          this.connection.receive(this::onMessageReceived);
-        } catch (final Exception e) {
-          if (!sentError) {
-            sender.message(
-              this.client.configuration.ircChannel(),
-              new StringBuilder(64)
-                .append("error: lost connection to message broker: ")
-                .append(e.getClass().getSimpleName())
-                .append(": ")
-                .append(e.getMessage())
-                .toString());
-            sentError = true;
-          }
-
-          LOG.error("i/o error: ", e);
-          try {
-            if (this.connection != null) {
-              this.connection.close();
-            }
-          } catch (final IOException ex) {
-            LOG.error("error closing connection: ", ex);
-          } finally {
-            this.connection = null;
-          }
-
-          LOG.debug("pausing for one second before retrying");
-          try {
-            Thread.sleep(1_000L);
-          } catch (final InterruptedException ex) {
-            Thread.currentThread().interrupt();
-          }
-        }
-      }
-    }
-
-    private void onMessageReceived(
-      final RMessage message)
-    {
-      LOG.debug("received: {}: {}", message.queue(), message.message());
-
-      final String text =
-        new StringBuilder(64)
-          .append(message.queue())
-          .append(": ")
-          .append(ISO_INSTANT.format(message.timestamp()))
-          .append(": ")
-          .append(message.message())
-          .toString();
-
-      final OutputIRC sender = this.client.bot.send();
-      sender.message(this.client.configuration.ircChannel(), text);
-    }
-  }
-
   private RClient(
     final RConfiguration in_configuration)
   {
-    this.configuration = Objects.requireNonNull(in_configuration, "configuration");
+    this.configuration = Objects.requireNonNull(
+      in_configuration,
+      "configuration");
 
     this.tasks = new ArrayList<>();
     this.executor = Executors.newFixedThreadPool(
@@ -229,6 +106,33 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
     final RConfiguration configuration)
   {
     return new RClient(configuration);
+  }
+
+  @Override
+  public void close()
+    throws Exception
+  {
+    if (this.done.compareAndSet(false, true)) {
+      Exception e = null;
+
+      for (final RClientBrokerTask task : this.tasks) {
+        try {
+          task.close();
+        } catch (final IOException ex) {
+          if (e == null) {
+            e = new Exception(ex);
+          } else {
+            e.addSuppressed(ex);
+          }
+        }
+      }
+
+      this.executor.shutdown();
+
+      if (e != null) {
+        throw e;
+      }
+    }
   }
 
   /**
@@ -299,6 +203,106 @@ public final class RClient extends ListenerAdapter implements AutoCloseable
         ex.getMessage());
     } else {
       LOG.info("disconnected: (no exception information available)");
+    }
+  }
+
+  private static final class RClientBrokerTask implements Closeable, Runnable
+  {
+    private final RClient client;
+    private final RQueueConfiguration queue_configuration;
+    private RBrokerConnection connection;
+
+    RClientBrokerTask(
+      final RClient in_client,
+      final RQueueConfiguration in_queue_configuration)
+    {
+      this.client =
+        Objects.requireNonNull(in_client, "client");
+      this.queue_configuration =
+        Objects.requireNonNull(in_queue_configuration, "queue_configuration");
+    }
+
+    @Override
+    public void close()
+      throws IOException
+    {
+      this.connection.close();
+    }
+
+    @Override
+    public void run()
+    {
+      final String queue_address = this.queue_configuration.queueAddress();
+      LOG.debug("starting task for queue: {}", queue_address);
+
+      final OutputIRC sender = this.client.bot.send();
+      boolean sentError = false;
+
+      while (!this.client.done.get()) {
+        try {
+          if (this.connection == null || !this.connection.isOpen()) {
+            LOG.debug(
+              "(re)opening connection to broker for queue: {}",
+              queue_address);
+            this.connection = RBrokerConnection.create(this.queue_configuration);
+
+            sender.message(
+              this.client.configuration.ircChannel(),
+              "info: established connection to message broker");
+            sentError = false;
+          }
+
+          this.connection.receive(this::onMessageReceived);
+        } catch (final Exception e) {
+          if (!sentError) {
+            sender.message(
+              this.client.configuration.ircChannel(),
+              new StringBuilder(64)
+                .append("error: lost connection to message broker: ")
+                .append(e.getClass().getSimpleName())
+                .append(": ")
+                .append(e.getMessage())
+                .toString());
+            sentError = true;
+          }
+
+          LOG.error("i/o error: ", e);
+          try {
+            if (this.connection != null) {
+              this.connection.close();
+            }
+          } catch (final IOException ex) {
+            LOG.error("error closing connection: ", ex);
+          } finally {
+            this.connection = null;
+          }
+
+          LOG.debug("pausing for one second before retrying");
+          try {
+            Thread.sleep(1_000L);
+          } catch (final InterruptedException ex) {
+            Thread.currentThread().interrupt();
+          }
+        }
+      }
+    }
+
+    private void onMessageReceived(
+      final RMessage message)
+    {
+      LOG.debug("received: {}: {}", message.queue(), message.message());
+
+      final String text =
+        new StringBuilder(64)
+          .append(message.queue())
+          .append(": ")
+          .append(ISO_INSTANT.format(message.timestamp()))
+          .append(": ")
+          .append(message.message())
+          .toString();
+
+      final OutputIRC sender = this.client.bot.send();
+      sender.message(this.client.configuration.ircChannel(), text);
     }
   }
 }

@@ -57,7 +57,8 @@ public final class RConfigurations
         properties.getProperty("com.io7m.jrai.queues");
 
       builder.setIrcHost(properties.getProperty("com.io7m.jrai.irc_server_host"));
-      builder.setIrcPort(Integer.parseInt(properties.getProperty("com.io7m.jrai.irc_server_port")));
+      builder.setIrcPort(Integer.parseInt(properties.getProperty(
+        "com.io7m.jrai.irc_server_port")));
       builder.setIrcNickName(properties.getProperty("com.io7m.jrai.irc_nick"));
       builder.setIrcUserName(properties.getProperty("com.io7m.jrai.irc_user"));
       builder.setIrcChannel(properties.getProperty("com.io7m.jrai.irc_channel"));
